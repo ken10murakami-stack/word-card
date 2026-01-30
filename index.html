@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Word Card Study</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div>
+      <h1>暗記カード</h1>
+      <p>効率的に学習できる暗記カードアプリ</p>
+    </div>
+    <nav>
+      <button class="tab-button active" data-tab="home">ホーム</button>
+      <button class="tab-button" data-tab="study">学習モード</button>
+    </nav>
+  </header>
+
+  <main>
+    <section id="home" class="tab-content active">
+      <div class="grid">
+        <section class="panel">
+          <div class="panel-header">
+            <h2>カードの束</h2>
+            <button id="create-deck">＋ 新規作成</button>
+          </div>
+          <div class="deck-list" id="deck-list"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-header">
+            <h2>カード編集</h2>
+            <button id="new-card">＋ カード追加</button>
+          </div>
+          <div class="deck-meta" id="deck-meta"></div>
+          <div class="card-editor">
+            <form id="card-form">
+              <div class="form-row">
+                <label>
+                  表 (Question)
+                  <textarea id="card-front" rows="3" placeholder="表に表示する内容"></textarea>
+                </label>
+                <label>
+                  裏 (Answer)
+                  <textarea id="card-back" rows="3" placeholder="裏に表示する内容"></textarea>
+                </label>
+              </div>
+              <div class="form-row">
+                <label>
+                  画像 (表)
+                  <input type="file" id="front-image" accept="image/*" />
+                </label>
+                <label>
+                  画像 (裏)
+                  <input type="file" id="back-image" accept="image/*" />
+                </label>
+              </div>
+              <div class="image-preview" id="image-preview"></div>
+              <div class="form-actions">
+                <button type="submit" id="save-card">保存</button>
+                <button type="button" id="delete-card" class="secondary">削除</button>
+              </div>
+            </form>
+          </div>
+          <div class="card-list" id="card-list"></div>
+        </section>
+      </div>
+    </section>
+
+    <section id="study" class="tab-content">
+      <div class="study-setup">
+        <div>
+          <h2>学習開始</h2>
+          <p>カードの束を選び、学習の方向を設定してください。</p>
+        </div>
+        <div class="study-controls">
+          <select id="study-deck"></select>
+          <div class="direction-toggle">
+            <label><input type="radio" name="direction" value="front" checked /> 表→裏</label>
+            <label><input type="radio" name="direction" value="back" /> 裏→表</label>
+          </div>
+          <button id="start-study">学習開始</button>
+        </div>
+      </div>
+
+      <div class="study-session" id="study-session">
+        <div class="card-stage" id="card-stage"></div>
+        <div class="study-actions">
+          <button id="flip-card" class="secondary">カードをめくる</button>
+          <button id="mark-correct">正解</button>
+          <button id="mark-wrong" class="danger">不正解</button>
+        </div>
+        <div class="study-status" id="study-status"></div>
+      </div>
+    </section>
+  </main>
+
+  <template id="deck-template">
+    <article class="deck-card">
+      <div class="deck-info">
+        <h3></h3>
+        <p class="deck-tags"></p>
+        <p class="deck-count"></p>
+      </div>
+      <div class="deck-actions">
+        <button class="select-deck">編集</button>
+        <button class="delete-deck secondary">削除</button>
+      </div>
+    </article>
+  </template>
+
+  <template id="card-item-template">
+    <article class="card-item">
+      <div>
+        <h4></h4>
+        <p class="card-back"></p>
+      </div>
+      <div class="card-stats"></div>
+      <div class="card-actions">
+        <button class="edit-card">編集</button>
+      </div>
+    </article>
+  </template>
+
+  <script src="app.js"></script>
+</body>
+</html>
