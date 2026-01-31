@@ -14,12 +14,9 @@ const state = {
     direction: "front",
     mode: "normal",
     showSide: "front",
-    sessionCorrectCount: 0,
-    sessionWrongCount: 0,
     sessionTotalCards: 0,
+    sessionResults: {},
     isActive: false,
-    sessionWrongIds: [],
-    lastWrongByDeck: {},
   },
 };
 
@@ -318,17 +315,29 @@ const resetCardForm = () => {
   renderImagePreview();
 };
 
+const getSessionCounts = () => {
+  const results = Object.values(state.study.sessionResults);
+  const correct = results.filter((value) => value === "correct").length;
+  const wrong = results.filter((value) => value === "wrong").length;
+  const remaining = Math.max(state.study.sessionTotalCards - correct - wrong, 0);
+  return {
+    correct,
+    wrong,
+    remaining,
+  };
+};
+
 const renderStudyStatus = () => {
   const deck = findDeck(state.study.deckId);
   if (!deck) {
     elements.studyStatus.textContent = "";
     return;
   }
-  const remaining = Math.max(state.study.sessionTotalCards - state.study.sessionCorrectCount, 0);
+  const { correct, wrong, remaining } = getSessionCounts();
   elements.studyStatus.textContent =
     remaining === 0
       ? "全てのカードに正解しました。"
-      : `正解 ${state.study.sessionCorrectCount} / 不正解 ${state.study.sessionWrongCount} / 残りカード ${remaining}`;
+      : `正解 ${correct} / 不正解 ${wrong} / 残りカード ${remaining}`;
 };
 
 const pickRandomCard = (cards) => {
@@ -344,9 +353,12 @@ const pickNextCard = (deck, mode) => {
   }
 
   if (mode === "weak") {
-    const lastWrongIds = state.study.lastWrongByDeck[deck.id] ?? [];
-    const wrongCards = deck.cards.filter((card) => lastWrongIds.includes(card.id));
-    return wrongCards.length ? pickRandomCard(wrongCards) : null;
+    const sorted = [...deck.cards].sort((a, b) => {
+      if (a.wrongCount !== b.wrongCount) return b.wrongCount - a.wrongCount;
+      if (a.attempts !== b.attempts) return a.attempts - b.attempts;
+      return a.correctCount - b.correctCount;
+    });
+    return sorted[0];
   }
 
   const sorted = [...deck.cards].sort((a, b) => {
@@ -369,7 +381,8 @@ const renderStudyCard = () => {
     elements.cardStage.innerHTML = "学習を開始してください。";
     return;
   }
-  if (state.study.sessionTotalCards - state.study.sessionCorrectCount <= 0) {
+  const { remaining } = getSessionCounts();
+  if (remaining <= 0) {
     elements.cardStage.innerHTML = "全てのカードに正解しました。";
     return;
   }
@@ -398,10 +411,8 @@ const resetStudySession = () => {
     alert("デッキを選択してください。");
     return;
   }
-  state.study.sessionCorrectCount = 0;
-  state.study.sessionWrongCount = 0;
   state.study.sessionTotalCards = deck.cards.length;
-  state.study.sessionWrongIds = [];
+  state.study.sessionResults = {};
   state.study.isActive = true;
   const next = pickNextCard(deck, state.study.mode);
   state.study.currentCardId = next?.id ?? null;
@@ -413,17 +424,12 @@ const resetStudySession = () => {
 const startStudySession = () => {
   const deck = findDeck(state.study.deckId);
   if (!deck) return;
-  if (state.study.mode !== "weak" && state.study.sessionWrongIds.length) {
-    state.study.lastWrongByDeck[state.study.deckId] = [...state.study.sessionWrongIds];
-  }
-  state.study.sessionWrongIds = [];
   if (!state.study.isActive) {
-    state.study.sessionCorrectCount = 0;
-    state.study.sessionWrongCount = 0;
     state.study.sessionTotalCards = deck.cards.length;
+    state.study.sessionResults = {};
     state.study.isActive = true;
   }
-  const remaining = state.study.sessionTotalCards - state.study.sessionCorrectCount;
+  const { remaining } = getSessionCounts();
   if (remaining <= 0) {
     state.study.currentCardId = null;
     renderStudyCard();
@@ -441,27 +447,17 @@ const handleStudyResult = (isCorrect) => {
   const deck = findDeck(state.study.deckId);
   if (!deck) return;
   if (!state.study.isActive) return;
-  if (state.study.sessionTotalCards - state.study.sessionCorrectCount <= 0) return;
+  const { remaining } = getSessionCounts();
+  if (remaining <= 0) return;
   const card = deck.cards.find((item) => item.id === state.study.currentCardId);
   if (!card) return;
   card.attempts += 1;
   if (isCorrect) {
     card.correctCount += 1;
-    state.study.sessionCorrectCount += 1;
+    state.study.sessionResults[card.id] = "correct";
   } else {
     card.wrongCount += 1;
-    state.study.sessionWrongCount += 1;
-    if (!state.study.sessionWrongIds.includes(card.id)) {
-      state.study.sessionWrongIds.push(card.id);
-    }
-  }
-  if (state.study.mode === "weak") {
-    const wrongIds = state.study.lastWrongByDeck[state.study.deckId] ?? [];
-    if (isCorrect) {
-      state.study.lastWrongByDeck[state.study.deckId] = wrongIds.filter((id) => id !== card.id);
-    } else if (!wrongIds.includes(card.id)) {
-      state.study.lastWrongByDeck[state.study.deckId] = [...wrongIds, card.id];
-    }
+    state.study.sessionResults[card.id] = "wrong";
   }
   saveState();
   renderCards();
