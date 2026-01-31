@@ -77,6 +77,11 @@
         </div>
         <div class="study-controls">
           <select id="study-deck"></select>
+          <select id="study-mode">
+            <option value="normal">通常モード</option>
+            <option value="weak">苦手モード</option>
+            <option value="random">ランダムモード</option>
+          </select>
           <div class="direction-toggle">
             <label><input type="radio" name="direction" value="front" checked /> 表→裏</label>
             <label><input type="radio" name="direction" value="back" /> 裏→表</label>
@@ -101,7 +106,6 @@
     <article class="deck-card">
       <div class="deck-info">
         <h3></h3>
-        <p class="deck-tags"></p>
         <p class="deck-count"></p>
       </div>
       <div class="deck-actions">
