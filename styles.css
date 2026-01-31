@@ -164,6 +164,19 @@ main {
   color: var(--muted);
 }
 
+.deck-create {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.deck-create input {
+  flex: 1;
+  min-width: 200px;
+}
+
 .card-editor {
   border: 1px solid var(--border);
   border-radius: 16px;
