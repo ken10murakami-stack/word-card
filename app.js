@@ -36,6 +36,7 @@ const elements = {
   backImage: document.getElementById("back-image"),
   imagePreview: document.getElementById("image-preview"),
   deleteCard: document.getElementById("delete-card"),
+  resetProgress: document.getElementById("reset-progress"),
   sheetUrl: document.getElementById("sheet-url"),
   importSheet: document.getElementById("import-sheet"),
   studyDeck: document.getElementById("study-deck"),
@@ -368,7 +369,7 @@ const renderStudyCard = () => {
   if (!card) {
     const message =
       state.study.mode === "weak"
-        ? "直前の学習で不正解のカードがありません。通常モードで学習してください。"
+        ? "不正解のカードはありません。"
         : "カードがありません。ホーム画面で追加してください。";
     elements.cardStage.innerHTML = message;
     return;
@@ -518,6 +519,22 @@ elements.deleteCard.addEventListener("click", () => {
   deck.cards = deck.cards.filter((card) => card.id !== state.editingCardId);
   state.editingCardId = null;
   resetCardForm();
+  saveState();
+  render();
+});
+
+elements.resetProgress.addEventListener("click", () => {
+  const deck = findDeck(state.selectedDeckId);
+  if (!deck) {
+    alert("デッキを選択してください。");
+    return;
+  }
+  if (!confirm(`${deck.name} の学習状況をリセットしますか？`)) return;
+  deck.cards.forEach((card) => {
+    card.correctCount = 0;
+    card.wrongCount = 0;
+    card.attempts = 0;
+  });
   saveState();
   render();
 });
