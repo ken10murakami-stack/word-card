@@ -26,6 +26,7 @@ const elements = {
   deckMeta: document.getElementById("deck-meta"),
   cardList: document.getElementById("card-list"),
   createDeck: document.getElementById("create-deck"),
+  deckName: document.getElementById("deck-name"),
   newCard: document.getElementById("new-card"),
   cardForm: document.getElementById("card-form"),
   cardFront: document.getElementById("card-front"),
@@ -439,8 +440,11 @@ elements.tabs.forEach((tab) => {
 });
 
 elements.createDeck.addEventListener("click", () => {
-  const name = prompt("デッキ名を入力してください");
-  if (!name) return;
+  const name = elements.deckName.value.trim();
+  if (!name) {
+    alert("デッキ名を入力してください。");
+    return;
+  }
   const newDeck = {
     id: uid(),
     name,
@@ -448,6 +452,7 @@ elements.createDeck.addEventListener("click", () => {
   };
   state.decks.push(newDeck);
   state.selectedDeckId = newDeck.id;
+  elements.deckName.value = "";
   saveState();
   render();
 });
