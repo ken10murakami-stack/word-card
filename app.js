@@ -15,7 +15,8 @@ const state = {
     mode: "normal",
     showSide: "front",
     sessionTotalCards: 0,
-    sessionResults: {},
+    sessionCorrectIds: new Set(),
+    sessionWrongIds: new Set(),
     isActive: false,
   },
 };
@@ -316,10 +317,10 @@ const resetCardForm = () => {
 };
 
 const getSessionCounts = () => {
-  const results = Object.values(state.study.sessionResults);
-  const correct = results.filter((value) => value === "correct").length;
-  const wrong = results.filter((value) => value === "wrong").length;
-  const remaining = Math.max(state.study.sessionTotalCards - correct - wrong, 0);
+  const correct = state.study.sessionCorrectIds.size;
+  const wrong = state.study.sessionWrongIds.size;
+  const attempted = new Set([...state.study.sessionCorrectIds, ...state.study.sessionWrongIds]).size;
+  const remaining = Math.max(state.study.sessionTotalCards - attempted, 0);
   return {
     correct,
     wrong,
@@ -412,7 +413,8 @@ const resetStudySession = () => {
     return;
   }
   state.study.sessionTotalCards = deck.cards.length;
-  state.study.sessionResults = {};
+  state.study.sessionCorrectIds = new Set();
+  state.study.sessionWrongIds = new Set();
   state.study.isActive = true;
   const next = pickNextCard(deck, state.study.mode);
   state.study.currentCardId = next?.id ?? null;
@@ -426,7 +428,8 @@ const startStudySession = () => {
   if (!deck) return;
   if (!state.study.isActive) {
     state.study.sessionTotalCards = deck.cards.length;
-    state.study.sessionResults = {};
+    state.study.sessionCorrectIds = new Set();
+    state.study.sessionWrongIds = new Set();
     state.study.isActive = true;
   }
   const { remaining } = getSessionCounts();
@@ -454,10 +457,10 @@ const handleStudyResult = (isCorrect) => {
   card.attempts += 1;
   if (isCorrect) {
     card.correctCount += 1;
-    state.study.sessionResults[card.id] = "correct";
+    state.study.sessionCorrectIds.add(card.id);
   } else {
     card.wrongCount += 1;
-    state.study.sessionResults[card.id] = "wrong";
+    state.study.sessionWrongIds.add(card.id);
   }
   saveState();
   renderCards();
