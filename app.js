@@ -12,7 +12,10 @@ const state = {
     deckId: null,
     currentCardId: null,
     direction: "front",
+    mode: "normal",
     showSide: "front",
+    sessionWrongIds: [],
+    lastWrongByDeck: {},
   },
 };
 
@@ -32,6 +35,7 @@ const elements = {
   imagePreview: document.getElementById("image-preview"),
   deleteCard: document.getElementById("delete-card"),
   studyDeck: document.getElementById("study-deck"),
+  studyMode: document.getElementById("study-mode"),
   startStudy: document.getElementById("start-study"),
   studySession: document.getElementById("study-session"),
   cardStage: document.getElementById("card-stage"),
@@ -65,8 +69,6 @@ const loadState = () => {
       {
         id: uid(),
         name: "英単語",
-        color: "#8b5cf6",
-        tags: ["語彙", "TOEIC"],
         cards: [
           {
             id: uid(),
@@ -126,15 +128,12 @@ const renderDecks = () => {
     const clone = deckTemplate.content.cloneNode(true);
     const card = clone.querySelector(".deck-card");
     const title = clone.querySelector("h3");
-    const tags = clone.querySelector(".deck-tags");
     const count = clone.querySelector(".deck-count");
     const selectBtn = clone.querySelector(".select-deck");
     const deleteBtn = clone.querySelector(".delete-deck");
 
     title.textContent = deck.name;
-    tags.textContent = deck.tags.length ? `タグ: ${deck.tags.join(" / ")}` : "タグ: なし";
     count.textContent = `カード数: ${deck.cards.length}`;
-    card.style.borderColor = deck.color;
     if (deck.id === state.selectedDeckId) {
       card.classList.add("selected");
     }
@@ -168,12 +167,11 @@ const renderDeckMeta = () => {
     return;
   }
 
-  const total = deck.cards.length;
   const pending = deck.cards.filter((card) => card.attempts === 0).length;
   const lowScore = deck.cards.filter((card) => card.correctCount === 0 && card.attempts > 0)
     .length;
   elements.deckMeta.innerHTML = `
-    <strong>${deck.name}</strong> / 色: <span style="color:${deck.color}">${deck.color}</span><br />
+    <strong>${deck.name}</strong><br />
     未実施: ${pending} / 正解回数0: ${lowScore}
   `;
 };
@@ -237,13 +235,34 @@ const renderStudyStatus = () => {
   }
   const card = deck.cards.find((item) => item.id === state.study.currentCardId);
   const remaining = deck.cards.length;
+  const modeLabel = {
+    normal: "通常モード",
+    weak: "苦手モード",
+    random: "ランダムモード",
+  }[state.study.mode];
   elements.studyStatus.textContent = card
-    ? `現在: ${deck.name} / 正解 ${card.correctCount} / 不正解 ${card.wrongCount} / 残りカード ${remaining}`
-    : `現在: ${deck.name} / カードがありません`;
+    ? `現在: ${deck.name} / ${modeLabel} / 正解 ${card.correctCount} / 不正解 ${card.wrongCount} / 残りカード ${remaining}`
+    : `現在: ${deck.name} / ${modeLabel} / カードがありません`;
 };
 
-const pickNextCard = (deck) => {
+const pickRandomCard = (cards) => {
+  if (!cards.length) return null;
+  const index = Math.floor(Math.random() * cards.length);
+  return cards[index];
+};
+
+const pickNextCard = (deck, mode) => {
   if (!deck || deck.cards.length === 0) return null;
+  if (mode === "random") {
+    return pickRandomCard(deck.cards);
+  }
+
+  if (mode === "weak") {
+    const lastWrongIds = state.study.lastWrongByDeck[deck.id] ?? [];
+    const wrongCards = deck.cards.filter((card) => lastWrongIds.includes(card.id));
+    return wrongCards.length ? pickRandomCard(wrongCards) : null;
+  }
+
   const sorted = [...deck.cards].sort((a, b) => {
     const untriedA = a.attempts === 0 ? -1 : 0;
     const untriedB = b.attempts === 0 ? -1 : 0;
@@ -262,7 +281,11 @@ const renderStudyCard = () => {
   }
   const card = deck.cards.find((item) => item.id === state.study.currentCardId);
   if (!card) {
-    elements.cardStage.innerHTML = "カードがありません。ホーム画面で追加してください。";
+    const message =
+      state.study.mode === "weak"
+        ? "直前の学習で不正解のカードがありません。通常モードで学習してください。"
+        : "カードがありません。ホーム画面で追加してください。";
+    elements.cardStage.innerHTML = message;
     return;
   }
 
@@ -270,16 +293,19 @@ const renderStudyCard = () => {
   const content = isFront ? card.front : card.back;
   const image = isFront ? card.frontImage : card.backImage;
   elements.cardStage.innerHTML = `
-    <h3>${isFront ? "表" : "裏"}</h3>
     <p>${content || "(内容が空です)"}</p>
-    ${image ? `<img src="${image}" alt="${isFront ? "表" : "裏"}画像" />` : ""}
+    ${image ? `<img src="${image}" alt="カード画像" />` : ""}
   `;
 };
 
 const startStudySession = () => {
   const deck = findDeck(state.study.deckId);
   if (!deck) return;
-  const next = pickNextCard(deck);
+  if (state.study.sessionWrongIds.length) {
+    state.study.lastWrongByDeck[state.study.deckId] = [...state.study.sessionWrongIds];
+  }
+  state.study.sessionWrongIds = [];
+  const next = pickNextCard(deck, state.study.mode);
   state.study.currentCardId = next?.id ?? null;
   state.study.showSide = state.study.direction;
   renderStudyCard();
@@ -296,6 +322,9 @@ const handleStudyResult = (isCorrect) => {
     card.correctCount += 1;
   } else {
     card.wrongCount += 1;
+    if (!state.study.sessionWrongIds.includes(card.id)) {
+      state.study.sessionWrongIds.push(card.id);
+    }
   }
   saveState();
   renderCards();
@@ -307,6 +336,7 @@ const render = () => {
   renderDeckMeta();
   renderCards();
   updateDeckSelect();
+  elements.studyMode.value = state.study.mode;
   renderStudyCard();
   renderStudyStatus();
 };
@@ -328,16 +358,9 @@ elements.tabs.forEach((tab) => {
 elements.createDeck.addEventListener("click", () => {
   const name = prompt("カードの束の名前を入力してください");
   if (!name) return;
-  const tagsInput = prompt("タグをカンマ区切りで入力してください (任意)", "");
-  const color = prompt("色を入力してください (例: #3b82f6)", "#3b82f6");
-  const tags = tagsInput
-    ? tagsInput.split(",").map((tag) => tag.trim()).filter(Boolean)
-    : [];
   const newDeck = {
     id: uid(),
     name,
-    color: color || "#3b82f6",
-    tags,
     cards: [],
   };
   state.decks.push(newDeck);
@@ -430,6 +453,7 @@ elements.backImage.addEventListener("change", (event) => {
 elements.startStudy.addEventListener("click", () => {
   state.study.deckId = elements.studyDeck.value;
   state.study.direction = document.querySelector("input[name='direction']:checked").value;
+  state.study.mode = elements.studyMode.value;
   startStudySession();
 });
 
