@@ -23,7 +23,7 @@
       <div class="grid">
         <section class="panel">
           <div class="panel-header">
-            <h2>カードの束</h2>
+            <h2>デッキ</h2>
             <button id="create-deck">＋ 新規作成</button>
           </div>
           <div class="deck-list" id="deck-list"></div>
@@ -64,6 +64,19 @@
               </div>
             </form>
           </div>
+          <div class="sheet-import">
+            <h3>スプレッドシートから追加</h3>
+            <p>公開されたGoogleスプレッドシートのリンクを貼り付けると、カードをまとめて追加できます。</p>
+            <div class="sheet-controls">
+              <input
+                type="url"
+                id="sheet-url"
+                placeholder="https://docs.google.com/spreadsheets/d/.../edit"
+              />
+              <button id="import-sheet" class="secondary">読み込む</button>
+            </div>
+            <p class="sheet-note">1行目が見出しの場合は front / back / frontImage / backImage を指定できます。</p>
+          </div>
           <div class="card-list" id="card-list"></div>
         </section>
       </div>
@@ -73,7 +86,7 @@
       <div class="study-setup">
         <div>
           <h2>学習開始</h2>
-          <p>カードの束を選び、学習の方向を設定してください。</p>
+          <p>デッキを選び、学習の方向を設定してください。</p>
         </div>
         <div class="study-controls">
           <select id="study-deck"></select>
