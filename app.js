@@ -51,6 +51,7 @@ const elements = {
   flipCard: document.getElementById("flip-card"),
   markCorrect: document.getElementById("mark-correct"),
   markWrong: document.getElementById("mark-wrong"),
+  restartStudy: document.getElementById("restart-study"),
   studyStatus: document.getElementById("study-status"),
 };
 
@@ -391,6 +392,24 @@ const renderStudyCard = () => {
   `;
 };
 
+const resetStudySession = () => {
+  const deck = findDeck(state.study.deckId);
+  if (!deck) {
+    alert("デッキを選択してください。");
+    return;
+  }
+  state.study.sessionCorrectCount = 0;
+  state.study.sessionWrongCount = 0;
+  state.study.sessionTotalCards = deck.cards.length;
+  state.study.sessionWrongIds = [];
+  state.study.isActive = true;
+  const next = pickNextCard(deck, state.study.mode);
+  state.study.currentCardId = next?.id ?? null;
+  state.study.showSide = state.study.direction;
+  renderStudyCard();
+  renderStudyStatus();
+};
+
 const startStudySession = () => {
   const deck = findDeck(state.study.deckId);
   if (!deck) return;
@@ -642,3 +661,5 @@ elements.flipCard.addEventListener("click", () => {
 elements.markCorrect.addEventListener("click", () => handleStudyResult(true));
 
 elements.markWrong.addEventListener("click", () => handleStudyResult(false));
+
+elements.restartStudy.addEventListener("click", () => resetStudySession());
