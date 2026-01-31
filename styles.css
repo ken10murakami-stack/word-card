@@ -144,11 +144,6 @@ main {
   margin: 0 0 6px;
 }
 
-.deck-tags {
-  color: var(--muted);
-  margin: 0 0 6px;
-}
-
 .deck-count {
   margin: 0;
   font-size: 13px;
