@@ -387,7 +387,7 @@ const renderStudyCard = () => {
 const startStudySession = () => {
   const deck = findDeck(state.study.deckId);
   if (!deck) return;
-  if (state.study.sessionWrongIds.length) {
+  if (state.study.mode !== "weak" && state.study.sessionWrongIds.length) {
     state.study.lastWrongByDeck[state.study.deckId] = [...state.study.sessionWrongIds];
   }
   state.study.sessionWrongIds = [];
@@ -410,6 +410,14 @@ const handleStudyResult = (isCorrect) => {
     card.wrongCount += 1;
     if (!state.study.sessionWrongIds.includes(card.id)) {
       state.study.sessionWrongIds.push(card.id);
+    }
+  }
+  if (state.study.mode === "weak") {
+    const wrongIds = state.study.lastWrongByDeck[state.study.deckId] ?? [];
+    if (isCorrect) {
+      state.study.lastWrongByDeck[state.study.deckId] = wrongIds.filter((id) => id !== card.id);
+    } else if (!wrongIds.includes(card.id)) {
+      state.study.lastWrongByDeck[state.study.deckId] = [...wrongIds, card.id];
     }
   }
   saveState();
