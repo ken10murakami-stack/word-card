@@ -650,6 +650,7 @@ elements.startStudy.addEventListener("click", () => {
   state.study.deckId = elements.studyDeck.value;
   state.study.direction = document.querySelector("input[name='direction']:checked").value;
   state.study.mode = elements.studyMode.value;
+  state.study.isActive = false;
   startStudySession();
 });
 
