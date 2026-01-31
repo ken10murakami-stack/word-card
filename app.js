@@ -34,6 +34,8 @@ const elements = {
   backImage: document.getElementById("back-image"),
   imagePreview: document.getElementById("image-preview"),
   deleteCard: document.getElementById("delete-card"),
+  sheetUrl: document.getElementById("sheet-url"),
+  importSheet: document.getElementById("import-sheet"),
   studyDeck: document.getElementById("study-deck"),
   studyMode: document.getElementById("study-mode"),
   startStudy: document.getElementById("start-study"),
@@ -49,6 +51,87 @@ const deckTemplate = document.getElementById("deck-template");
 const cardItemTemplate = document.getElementById("card-item-template");
 
 const uid = () => Math.random().toString(36).slice(2, 10);
+
+const normalizeSheetUrl = (url) => {
+  const match = url.match(/spreadsheets\\/d\\/([a-zA-Z0-9-_]+)/);
+  if (match) {
+    return `https://docs.google.com/spreadsheets/d/${match[1]}/export?format=csv`;
+  }
+  return url;
+};
+
+const parseCsv = (text) => {
+  const rows = [];
+  let current = "";
+  let inQuotes = false;
+  let row = [];
+
+  for (let i = 0; i < text.length; i += 1) {
+    const char = text[i];
+    const next = text[i + 1];
+    if (char === "\"") {
+      if (inQuotes && next === "\"") {
+        current += "\"";
+        i += 1;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (char === "," && !inQuotes) {
+      row.push(current);
+      current = "";
+    } else if ((char === "\n" || char === "\r") && !inQuotes) {
+      if (current || row.length) {
+        row.push(current);
+        rows.push(row);
+        row = [];
+        current = "";
+      }
+      if (char === "\r" && next === "\n") {
+        i += 1;
+      }
+    } else {
+      current += char;
+    }
+  }
+
+  if (current || row.length) {
+    row.push(current);
+    rows.push(row);
+  }
+
+  return rows;
+};
+
+const mapCsvRowsToCards = (rows) => {
+  if (!rows.length) return [];
+  const header = rows[0].map((cell) => cell.trim().toLowerCase());
+  const hasHeader = header.includes("front") || header.includes("back");
+  const startIndex = hasHeader ? 1 : 0;
+  const columnIndex = {
+    front: header.indexOf("front"),
+    back: header.indexOf("back"),
+    frontImage: header.indexOf("frontimage"),
+    backImage: header.indexOf("backimage"),
+  };
+
+  return rows.slice(startIndex).map((row) => {
+    const front = hasHeader ? row[columnIndex.front] : row[0];
+    const back = hasHeader ? row[columnIndex.back] : row[1];
+    const frontImage = hasHeader ? row[columnIndex.frontImage] : row[2];
+    const backImage = hasHeader ? row[columnIndex.backImage] : row[3];
+
+    return {
+      id: uid(),
+      front: front?.trim() || "",
+      back: back?.trim() || "",
+      frontImage: frontImage?.trim() || null,
+      backImage: backImage?.trim() || null,
+      correctCount: 0,
+      wrongCount: 0,
+      attempts: 0,
+    };
+  }).filter((card) => card.front || card.back);
+};
 
 const saveState = () => {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state.decks));
@@ -163,7 +246,7 @@ const renderDecks = () => {
 const renderDeckMeta = () => {
   const deck = findDeck(state.selectedDeckId);
   if (!deck) {
-    elements.deckMeta.textContent = "カードの束を選択してください。";
+    elements.deckMeta.textContent = "デッキを選択してください。";
     return;
   }
 
@@ -276,7 +359,7 @@ const pickNextCard = (deck, mode) => {
 const renderStudyCard = () => {
   const deck = findDeck(state.study.deckId);
   if (!deck) {
-    elements.cardStage.innerHTML = "カードの束を選択してください。";
+    elements.cardStage.innerHTML = "デッキを選択してください。";
     return;
   }
   const card = deck.cards.find((item) => item.id === state.study.currentCardId);
@@ -356,7 +439,7 @@ elements.tabs.forEach((tab) => {
 });
 
 elements.createDeck.addEventListener("click", () => {
-  const name = prompt("カードの束の名前を入力してください");
+  const name = prompt("デッキ名を入力してください");
   if (!name) return;
   const newDeck = {
     id: uid(),
@@ -378,7 +461,7 @@ elements.cardForm.addEventListener("submit", (event) => {
   event.preventDefault();
   const deck = findDeck(state.selectedDeckId);
   if (!deck) {
-    alert("カードの束を選択してください。");
+    alert("デッキを選択してください。");
     return;
   }
   const front = elements.cardFront.value.trim();
@@ -448,6 +531,40 @@ elements.backImage.addEventListener("change", (event) => {
     renderImagePreview();
   };
   reader.readAsDataURL(file);
+});
+
+elements.importSheet.addEventListener("click", async () => {
+  const deck = findDeck(state.selectedDeckId);
+  if (!deck) {
+    alert("デッキを選択してください。");
+    return;
+  }
+  const url = elements.sheetUrl.value.trim();
+  if (!url) {
+    alert("スプレッドシートのリンクを入力してください。");
+    return;
+  }
+
+  try {
+    const response = await fetch(normalizeSheetUrl(url));
+    if (!response.ok) {
+      throw new Error("Failed to load sheet");
+    }
+    const text = await response.text();
+    const rows = parseCsv(text);
+    const cards = mapCsvRowsToCards(rows);
+    if (!cards.length) {
+      alert("読み込めるカードがありませんでした。");
+      return;
+    }
+    deck.cards.push(...cards);
+    elements.sheetUrl.value = "";
+    saveState();
+    render();
+  } catch (error) {
+    console.error(error);
+    alert("スプレッドシートの読み込みに失敗しました。公開設定を確認してください。");
+  }
 });
 
 elements.startStudy.addEventListener("click", () => {
