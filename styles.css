@@ -164,6 +164,12 @@ main {
   color: var(--muted);
 }
 
+.deck-actions-inline {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 16px;
+}
+
 .deck-create {
   display: flex;
   gap: 12px;
