@@ -172,6 +172,41 @@ main {
   margin-bottom: 16px;
 }
 
+.sheet-import {
+  border: 1px dashed var(--border);
+  border-radius: 16px;
+  padding: 16px;
+  background: #fff;
+  margin-bottom: 16px;
+}
+
+.sheet-import h3 {
+  margin: 0 0 8px;
+  font-size: 16px;
+}
+
+.sheet-import p {
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.sheet-controls {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.sheet-controls input {
+  flex: 1;
+  min-width: 220px;
+}
+
+.sheet-note {
+  margin-top: 8px;
+}
+
 .form-row {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
