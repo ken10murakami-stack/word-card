@@ -14,6 +14,10 @@ const state = {
     direction: "front",
     mode: "normal",
     showSide: "front",
+    sessionCorrectCount: 0,
+    sessionWrongCount: 0,
+    sessionTotalCards: 0,
+    isActive: false,
     sessionWrongIds: [],
     lastWrongByDeck: {},
   },
@@ -319,16 +323,11 @@ const renderStudyStatus = () => {
     elements.studyStatus.textContent = "";
     return;
   }
-  const card = deck.cards.find((item) => item.id === state.study.currentCardId);
-  const remaining = deck.cards.length;
-  const modeLabel = {
-    normal: "通常モード",
-    weak: "苦手モード",
-    random: "ランダムモード",
-  }[state.study.mode];
-  elements.studyStatus.textContent = card
-    ? `現在: ${deck.name} / ${modeLabel} / 正解 ${card.correctCount} / 不正解 ${card.wrongCount} / 残りカード ${remaining}`
-    : `現在: ${deck.name} / ${modeLabel} / カードがありません`;
+  const remaining = Math.max(state.study.sessionTotalCards - state.study.sessionCorrectCount, 0);
+  elements.studyStatus.textContent =
+    remaining === 0
+      ? "全てのカードに正解しました。"
+      : `正解 ${state.study.sessionCorrectCount} / 不正解 ${state.study.sessionWrongCount} / 残りカード ${remaining}`;
 };
 
 const pickRandomCard = (cards) => {
@@ -365,6 +364,14 @@ const renderStudyCard = () => {
     elements.cardStage.innerHTML = "デッキを選択してください。";
     return;
   }
+  if (!state.study.isActive) {
+    elements.cardStage.innerHTML = "学習を開始してください。";
+    return;
+  }
+  if (state.study.sessionTotalCards - state.study.sessionCorrectCount <= 0) {
+    elements.cardStage.innerHTML = "全てのカードに正解しました。";
+    return;
+  }
   const card = deck.cards.find((item) => item.id === state.study.currentCardId);
   if (!card) {
     const message =
@@ -391,6 +398,19 @@ const startStudySession = () => {
     state.study.lastWrongByDeck[state.study.deckId] = [...state.study.sessionWrongIds];
   }
   state.study.sessionWrongIds = [];
+  if (!state.study.isActive) {
+    state.study.sessionCorrectCount = 0;
+    state.study.sessionWrongCount = 0;
+    state.study.sessionTotalCards = deck.cards.length;
+    state.study.isActive = true;
+  }
+  const remaining = state.study.sessionTotalCards - state.study.sessionCorrectCount;
+  if (remaining <= 0) {
+    state.study.currentCardId = null;
+    renderStudyCard();
+    renderStudyStatus();
+    return;
+  }
   const next = pickNextCard(deck, state.study.mode);
   state.study.currentCardId = next?.id ?? null;
   state.study.showSide = state.study.direction;
@@ -401,13 +421,17 @@ const startStudySession = () => {
 const handleStudyResult = (isCorrect) => {
   const deck = findDeck(state.study.deckId);
   if (!deck) return;
+  if (!state.study.isActive) return;
+  if (state.study.sessionTotalCards - state.study.sessionCorrectCount <= 0) return;
   const card = deck.cards.find((item) => item.id === state.study.currentCardId);
   if (!card) return;
   card.attempts += 1;
   if (isCorrect) {
     card.correctCount += 1;
+    state.study.sessionCorrectCount += 1;
   } else {
     card.wrongCount += 1;
+    state.study.sessionWrongCount += 1;
     if (!state.study.sessionWrongIds.includes(card.id)) {
       state.study.sessionWrongIds.push(card.id);
     }
