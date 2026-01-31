@@ -55,7 +55,7 @@ const cardItemTemplate = document.getElementById("card-item-template");
 const uid = () => Math.random().toString(36).slice(2, 10);
 
 const normalizeSheetUrl = (url) => {
-  const match = url.match(/spreadsheets\\/d\\/([a-zA-Z0-9-_]+)/);
+  const match = url.match(/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
   if (match) {
     return `https://docs.google.com/spreadsheets/d/${match[1]}/export?format=csv`;
   }
