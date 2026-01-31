@@ -26,6 +26,7 @@ const elements = {
   deckMeta: document.getElementById("deck-meta"),
   cardList: document.getElementById("card-list"),
   createDeck: document.getElementById("create-deck"),
+  deckForm: document.getElementById("deck-form"),
   deckName: document.getElementById("deck-name"),
   newCard: document.getElementById("new-card"),
   cardForm: document.getElementById("card-form"),
@@ -439,7 +440,7 @@ elements.tabs.forEach((tab) => {
   tab.addEventListener("click", () => updateTabs(tab.dataset.tab));
 });
 
-elements.createDeck.addEventListener("click", () => {
+const handleCreateDeck = () => {
   const name = elements.deckName.value.trim();
   if (!name) {
     alert("デッキ名を入力してください。");
@@ -455,6 +456,11 @@ elements.createDeck.addEventListener("click", () => {
   elements.deckName.value = "";
   saveState();
   render();
+};
+
+elements.deckForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  handleCreateDeck();
 });
 
 elements.newCard.addEventListener("click", () => {
