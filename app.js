@@ -49,7 +49,6 @@ const elements = {
   flipCard: document.getElementById("flip-card"),
   markCorrect: document.getElementById("mark-correct"),
   markWrong: document.getElementById("mark-wrong"),
-  restartStudy: document.getElementById("restart-study"),
   studyStatus: document.getElementById("study-status"),
 };
 
@@ -337,7 +336,7 @@ const renderStudyStatus = () => {
   const { correct, wrong, remaining } = getSessionCounts();
   elements.studyStatus.textContent =
     remaining === 0
-      ? "全てのカードに正解しました。"
+      ? "全てのカードに挑戦しました"
       : `正解 ${correct} / 不正解 ${wrong} / 残りカード ${remaining}`;
 };
 
@@ -354,22 +353,20 @@ const pickNextCard = (deck, mode) => {
   }
 
   if (mode === "weak") {
-    const sorted = [...deck.cards].sort((a, b) => {
-      if (a.wrongCount !== b.wrongCount) return b.wrongCount - a.wrongCount;
-      if (a.attempts !== b.attempts) return a.attempts - b.attempts;
-      return a.correctCount - b.correctCount;
-    });
+    const candidates = deck.cards.filter(
+      (card) => card.wrongCount > 0 && !state.study.sessionCorrectIds.has(card.id),
+    );
+    if (!candidates.length) return null;
+    const sorted = [...candidates].sort((a, b) => b.wrongCount - a.wrongCount);
     return sorted[0];
   }
 
-  const sorted = [...deck.cards].sort((a, b) => {
-    const untriedA = a.attempts === 0 ? -1 : 0;
-    const untriedB = b.attempts === 0 ? -1 : 0;
-    if (untriedA !== untriedB) return untriedA - untriedB;
-    if (a.correctCount !== b.correctCount) return a.correctCount - b.correctCount;
-    return a.wrongCount - b.wrongCount;
-  });
-  return sorted[0];
+  const unattempted = deck.cards.filter(
+    (card) =>
+      !state.study.sessionCorrectIds.has(card.id) &&
+      !state.study.sessionWrongIds.has(card.id),
+  );
+  return pickRandomCard(unattempted);
 };
 
 const renderStudyCard = () => {
@@ -384,7 +381,7 @@ const renderStudyCard = () => {
   }
   const { remaining } = getSessionCounts();
   if (remaining <= 0) {
-    elements.cardStage.innerHTML = "全てのカードに正解しました。";
+    elements.cardStage.innerHTML = "全てのカードに挑戦しました";
     return;
   }
   const card = deck.cards.find((item) => item.id === state.study.currentCardId);
@@ -406,7 +403,7 @@ const renderStudyCard = () => {
   `;
 };
 
-const resetStudySession = () => {
+const startStudySession = () => {
   const deck = findDeck(state.study.deckId);
   if (!deck) {
     alert("デッキを選択してください。");
@@ -416,22 +413,14 @@ const resetStudySession = () => {
   state.study.sessionCorrectIds = new Set();
   state.study.sessionWrongIds = new Set();
   state.study.isActive = true;
-  const next = pickNextCard(deck, state.study.mode);
-  state.study.currentCardId = next?.id ?? null;
+  state.study.currentCardId = null;
   state.study.showSide = state.study.direction;
-  renderStudyCard();
-  renderStudyStatus();
+  advanceStudySession();
 };
 
-const startStudySession = () => {
+const advanceStudySession = () => {
   const deck = findDeck(state.study.deckId);
   if (!deck) return;
-  if (!state.study.isActive) {
-    state.study.sessionTotalCards = deck.cards.length;
-    state.study.sessionCorrectIds = new Set();
-    state.study.sessionWrongIds = new Set();
-    state.study.isActive = true;
-  }
   const { remaining } = getSessionCounts();
   if (remaining <= 0) {
     state.study.currentCardId = null;
@@ -458,13 +447,15 @@ const handleStudyResult = (isCorrect) => {
   if (isCorrect) {
     card.correctCount += 1;
     state.study.sessionCorrectIds.add(card.id);
+    state.study.sessionWrongIds.delete(card.id);
   } else {
     card.wrongCount += 1;
     state.study.sessionWrongIds.add(card.id);
+    state.study.sessionCorrectIds.delete(card.id);
   }
   saveState();
   renderCards();
-  startStudySession();
+  advanceStudySession();
 };
 
 const render = () => {
@@ -661,5 +652,3 @@ elements.flipCard.addEventListener("click", () => {
 elements.markCorrect.addEventListener("click", () => handleStudyResult(true));
 
 elements.markWrong.addEventListener("click", () => handleStudyResult(false));
-
-elements.restartStudy.addEventListener("click", () => resetStudySession());
